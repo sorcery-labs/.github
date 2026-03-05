@@ -1,0 +1,43 @@
+name: Infrastructure Change
+description: Work that spans iac and one or more app repos
+labels: ["component:iac"]
+body:
+  - type: dropdown
+    id: workstream
+    attributes:
+      label: Workstream(s) affected
+      multiple: true
+      options: [sorcery, super-duper, routes, trading, monitoring, infrastructure]
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What infrastructure is changing?
+    validations:
+      required: true
+  - type: textarea
+    id: repos
+    attributes:
+      label: Repos involved
+      description: List every repo that needs a code change.
+      placeholder: |
+        - iac  (terraform module update)
+        - vault  (env var + config update)
+        - routes  (endpoint config)
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact & rollback plan
+      placeholder: What breaks if this goes wrong? How do we roll back?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] iac PR merged and apply verified
+        - [ ] App repo PR merged
+        - [ ] Smoke test passed in staging
+

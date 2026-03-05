@@ -1,0 +1,43 @@
+name: Task
+description: General task, feature, or bug
+labels: []
+body:
+  - type: dropdown
+    id: workstream
+    attributes:
+      label: Workstream
+      description: Which project board does this belong to?
+      options: [sd, vault, routes, trading, monitoring, sorcery]
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: [Critical, High, Medium, Low]
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What needs to be done?
+      placeholder: One-sentence description
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context / background
+      placeholder: Why does this matter? Link any relevant Notion docs.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] Criterion one
+        - [ ] Criterion two
+  - type: input
+    id: notion
+    attributes:
+      label: Notion doc (optional)
+      placeholder: https://notion.so/...

@@ -1,4 +1,4 @@
-name: Task
+name: Task, Feature or bug
 description: General task, feature, or bug
 labels: []
 body:
@@ -7,7 +7,7 @@ body:
     attributes:
       label: Workstream
       description: Which project board does this belong to?
-      options: [sd, vault, routes, trading, monitoring, sorcery]
+      options: [sorcery, super-duper, routes, trading, monitoring, infrastructure]
     validations:
       required: true
   - type: dropdown

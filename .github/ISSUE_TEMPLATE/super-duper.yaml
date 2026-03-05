@@ -1,0 +1,29 @@
+name: SuperDuper task
+description: Work for the SuperDuper contracts
+labels: ["workstream:super-duper"]
+body:
+  - type: dropdown
+    id: repo_context
+    attributes:
+      label: Primary repo
+      options: [risk-gateway, grease, iac, other]
+    validations:
+      required: true
+  - type: input
+    id: contract_ref
+    attributes:
+      label: Contract / milestone reference
+      placeholder: e.g. "Q2 Deliverable 3" or invoice line item
+  - type: textarea
+    id: summary
+    attributes:
+      label: What needs to be done?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] Feature works as agreed
+        - [ ] Client sign-off received

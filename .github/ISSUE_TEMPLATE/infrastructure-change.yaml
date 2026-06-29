@@ -1,13 +1,13 @@
 name: Infrastructure Change
 description: Work that spans iac and one or more app repos
-labels: ["component:iac"]
+labels: ["workstream:platform", "area:iac"]
 body:
   - type: dropdown
     id: workstream
     attributes:
       label: Workstream(s) affected
       multiple: true
-      options: [sorcery, super-duper, routes, trading, monitoring, infrastructure]
+      options: [super-duper, trading, tiny-markets, platform, sorcery]
     validations:
       required: true
   - type: textarea
@@ -24,7 +24,7 @@ body:
       placeholder: |
         - iac  (terraform module update)
         - vault  (env var + config update)
-        - routes  (endpoint config)
+        - risk-gateway  (endpoint config)
   - type: textarea
     id: impact
     attributes:

@@ -1,0 +1,50 @@
+name: Sync labels
+
+# Reconciles each target repo's label set with .github/labels.yml.
+# Runs when the manifest changes (or on manual dispatch) — NOT per issue.
+on:
+  push:
+    branches: [master]
+    paths:
+      - .github/labels.yml
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply label manifest to every target repo
+        env:
+          # The default GITHUB_TOKEN can only touch THIS repo, so syncing other
+          # repos needs a cross-repo token: a PAT (classic `repo`, or fine-grained
+          # with Issues: write) or a GitHub App token, with access to the targets.
+          # Store it as the LABEL_SYNC_TOKEN secret on this repo.
+          GH_TOKEN: ${{ secrets.LABEL_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          ORG="sorcery-labs"
+
+          # Every non-archived, non-fork repo in the org gets the label set.
+          mapfile -t REPOS < <(gh repo list "$ORG" --no-archived --source --limit 1000 --json name -q '.[].name')
+          echo "Syncing labels to ${#REPOS[@]} repos in $ORG"
+
+          # yq (mikefarah) is preinstalled on ubuntu-latest; jq always is.
+          yq -o=json '.labels' .github/labels.yml > /tmp/labels.json
+
+          for repo in "${REPOS[@]}"; do
+            echo "::group::$ORG/$repo"
+            jq -c '.[]' /tmp/labels.json | while read -r row; do
+              name=$(jq -r '.name'        <<<"$row")
+              color=$(jq -r '.color'      <<<"$row")
+              desc=$(jq -r '.description' <<<"$row")
+              # --force = create-or-update; never deletes other labels (additive).
+              gh label create "$name" --color "$color" --description "$desc" \
+                --repo "$ORG/$repo" --force
+            done
+            echo "::endgroup::"
+          done

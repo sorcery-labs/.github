@@ -1,0 +1,94 @@
+name: Sync workstream field
+
+# Centralized reconcile: sweeps the OrgWide Work project (#10) and sets each
+# card's Workstream field from its issue's `workstream:*` label. Pairs with the
+# project's built-in auto-add, which handles board membership. Runs on a schedule
+# and on manual dispatch — it is NOT per-issue, so expect up to ~30 min latency.
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          # Needs Organization → Projects: Read and write, plus Repository →
+          # Issues: Read (to read labels on the linked issues). The default
+          # GITHUB_TOKEN can't reach org Projects, so a PAT/App token is required.
+          # Store it as the PROJECT_SYNC_TOKEN secret.
+          github-token: ${{ secrets.PROJECT_SYNC_TOKEN }}
+          script: |
+            const ORG = 'sorcery-labs';
+            const PROJECT_NUMBER = 10;
+
+            // 1. Resolve the project id + the Workstream field (id + option map).
+            const meta = await github.graphql(`
+              query($org:String!, $num:Int!) {
+                organization(login:$org) {
+                  projectV2(number:$num) {
+                    id
+                    field(name:"Workstream") {
+                      ... on ProjectV2SingleSelectField { id options { id name } }
+                    }
+                  }
+                }
+              }`, { org: ORG, num: PROJECT_NUMBER });
+
+            const project = meta.organization.projectV2;
+            const field = project && project.field;
+            if (!field) { core.setFailed('No "Workstream" single-select field on the project'); return; }
+
+            // option name lowercased == the workstream label slug ("Super-duper" -> "super-duper")
+            const optionBySlug = new Map(field.options.map(o => [o.name.toLowerCase(), o.id]));
+
+            // 2. Page through every board item; set Workstream when an issue's
+            //    workstream:* label disagrees with the field. Never clears the
+            //    field, so manually-set drafts and unlabeled items are left alone.
+            let cursor = null, scanned = 0, updated = 0;
+            do {
+              const page = await github.graphql(`
+                query($id:ID!, $cursor:String) {
+                  node(id:$id) {
+                    ... on ProjectV2 {
+                      items(first:100, after:$cursor) {
+                        pageInfo { hasNextPage endCursor }
+                        nodes {
+                          id
+                          fieldValueByName(name:"Workstream") {
+                            ... on ProjectV2ItemFieldSingleSelectValue { optionId }
+                          }
+                          content { ... on Issue { labels(first:50) { nodes { name } } } }
+                        }
+                      }
+                    }
+                  }
+                }`, { id: project.id, cursor });
+
+              const items = page.node.items;
+              for (const it of items.nodes) {
+                scanned++;
+                const labels = ((it.content && it.content.labels && it.content.labels.nodes) || []).map(l => l.name);
+                const ws = labels.find(n => n.startsWith('workstream:'));
+                if (!ws) continue;                              // no label → leave for triage
+                const optId = optionBySlug.get(ws.slice('workstream:'.length).toLowerCase());
+                if (!optId) { core.warning(`No board option for ${ws}`); continue; }
+                const current = it.fieldValueByName && it.fieldValueByName.optionId;
+                if (current === optId) continue;                // already correct
+                await github.graphql(`
+                  mutation($p:ID!, $i:ID!, $f:ID!, $o:String!) {
+                    updateProjectV2ItemFieldValue(input:{
+                      projectId:$p, itemId:$i, fieldId:$f, value:{ singleSelectOptionId:$o }
+                    }) { projectV2Item { id } }
+                  }`, { p: project.id, i: it.id, f: field.id, o: optId });
+                updated++;
+              }
+              cursor = items.pageInfo.hasNextPage ? items.pageInfo.endCursor : null;
+            } while (cursor);
+
+            core.info(`Scanned ${scanned} board items; updated ${updated}.`);

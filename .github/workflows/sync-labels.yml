@@ -31,6 +31,15 @@ jobs:
 
           # Every non-archived, non-fork repo in the org gets the label set.
           mapfile -t REPOS < <(gh repo list "$ORG" --no-archived --source --limit 1000 --json name -q '.[].name')
+
+          # Fail loudly instead of silently succeeding: an empty list almost
+          # always means LABEL_SYNC_TOKEN lost org access (revoked/expired PAT,
+          # wrong resource owner, or pending approval) rather than a real 0-repo org.
+          if [ ${#REPOS[@]} -eq 0 ]; then
+            echo "::error::No repos enumerated — check LABEL_SYNC_TOKEN org access/approval"
+            exit 1
+          fi
+
           echo "Syncing labels to ${#REPOS[@]} repos in $ORG"
 
           # yq (mikefarah) is preinstalled on ubuntu-latest; jq always is.

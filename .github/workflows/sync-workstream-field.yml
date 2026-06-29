@@ -20,11 +20,12 @@ jobs:
     steps:
       - uses: actions/github-script@v7
         with:
-          # Needs Organization → Projects: Read and write, plus Repository →
-          # Issues: Read (to read labels on the linked issues). The default
-          # GITHUB_TOKEN can't reach org Projects, so a PAT/App token is required.
-          # Store it as the PROJECT_SYNC_TOKEN secret.
-          github-token: ${{ secrets.PROJECT_SYNC_TOKEN }}
+          # Reuses the shared LABEL_SYNC_TOKEN secret (the fine-grained PAT also
+          # used by sync-labels), which has been extended to include
+          # Organization → Projects: Read and write on top of its Repository →
+          # Issues access. The default GITHUB_TOKEN can't reach org Projects, so
+          # this PAT is required.
+          github-token: ${{ secrets.LABEL_SYNC_TOKEN }}
           script: |
             const ORG = 'sorcery-labs';
             const PROJECT_NUMBER = 10;
